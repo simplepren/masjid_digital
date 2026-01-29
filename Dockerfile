@@ -16,5 +16,6 @@ COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 COPY . .
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 RUN npm install && npm run build
-RUN chown -R www-data:www-data storage bootstrap/cache \
-    && chmod -R 775 storage bootstrap/cache
+
+RUN mkdir -p storage bootstrap/cache database \
+ && chown -R www-data:www-data storage bootstrap/cache database
