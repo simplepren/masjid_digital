@@ -1,6 +1,6 @@
-# Aplikasi Masjid
+# Aplikasi Masjid Digital
 
-Aplikasi ini free/berbasis open source dan dapat digunakan oleh siapa saja. Anda bisa mengubah dan memodifikasi aplikasi ini sesuai kebutuhan Anda tanpa harus meminta izin maupun memberikan atribusi apapun. Silakan gunakan dengan bijak.
+Ini adalah aplikasi untuk menampilkan jadwal sholat secara digital melalui sebuah display atau TV. Aplikasi ini free/berbasis open source dan dapat digunakan oleh siapa saja. Anda bisa mengubah dan memodifikasi aplikasi ini sesuai kebutuhan Anda tanpa harus meminta izin maupun memberikan atribusi apapun. Silakan gunakan dengan bijak.
 
 ## Fitur
 - Jadwal Sholat realtime, autosync dengan API https://api.myquran.com/
@@ -12,9 +12,21 @@ Aplikasi ini free/berbasis open source dan dapat digunakan oleh siapa saja. Anda
 - Pemilihan template display TV
 
 ## Panduan Instalasi
-- git clone https://github.com/simplepren/masjid_digital
-- cp .env.example cp
-- docker compose up -d --build
+- Install docker
+```sh
+git clone https://github.com/simplepren/masjid_digital
+cp .env.example .env
+docker compose up -d --build
+```
+- Buka browser, akses http://localhost:81
+
+## Panduan Penggunaan
+- Login melalui route /login
+- Lengkapi Profil Masjid
+- Sinkronisasi Jadwal Sholat pada menu Jadwal Sholat (API sebaiknya jangan diubah/diganti)
+- Atur Durasi Adzan, Iqomah, dan Sholat pada menu Pengaturan Sholat
+- Pilih Template Display pada menu Template Display
+- Silakan buka/akses tampilan display masjid (TV) melalui route /display
 
 ## Tech Stack
 - Laravel v.12
