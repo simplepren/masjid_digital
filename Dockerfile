@@ -17,9 +17,5 @@ COPY . .
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 RUN npm install && npm run build
 
-RUN mkdir -p database storage bootstrap/cache \
-    && touch database/database.sqlite
-
-# Berikan izin ke user www-data (user default FrankenPHP)
-RUN chown -R www-data:www-data /app \
-    && chmod -R 775 /app/storage /app/bootstrap/cache /app/database
+RUN chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
