@@ -15,7 +15,6 @@ Ini adalah aplikasi untuk menampilkan jadwal sholat secara digital melalui sebua
 - Install docker
 ```sh
 git clone https://github.com/simplepren/masjid_digital
-cp .env.example .env
 docker compose up -d --build
 ```
 - Buka browser, akses http://localhost:81
