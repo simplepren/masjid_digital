@@ -43,8 +43,7 @@ services:
       sh -c "
       php artisan migrate --force &&
       php artisan db:seed --force &&
-      php artisan optimize:clear &&
-      php artisan key:generate &&
+      php artisan key:generate --force &&
       php artisan queue:work --sleep=3 --tries=3
       "
     networks:
@@ -83,20 +82,6 @@ services:
       - masjid-network
     depends_on:
       - db
-
-  soketi:
-    image: quay.io/soketi/soketi:1.6-16-alpine
-    container_name: masjid-soketi
-    ports:
-      - "6001:6001"
-    environment:
-      SOKETI_DEBUG: "false"
-      SOKETI_DEFAULT_APP_ID: masjid
-      SOKETI_DEFAULT_APP_KEY: masjid-key
-      SOKETI_DEFAULT_APP_SECRET: masjid-secret
-    restart: unless-stopped
-    networks:
-      - masjid-network
 
 networks:
   masjid-network:

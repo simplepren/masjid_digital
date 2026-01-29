@@ -17,7 +17,8 @@ class WallpaperSeeder extends Seeder
             [
                 'key' => 'wallpaper_images',
                 'value' => json_encode([
-                    'images' => json_encode(["default.jpg"])
+                    // 'images' => json_encode(["default.jpg"])
+                    'images' => ["default.jpg"]
                 ]),
                 'created_at' => now(),
                 'updated_at' => now()
