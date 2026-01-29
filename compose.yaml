@@ -8,6 +8,8 @@ services:
     volumes:
       - ./:/var/www/html
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       APP_NAME: "Aplikasi Jam Digital Masjid"
       APP_ENV: production
@@ -28,6 +30,11 @@ services:
       PUSHER_PORT: 6001
       PUSHER_SCHEME: http
       PUSHER_APP_CLUSTER: mt1
+      VITE_PUSHER_APP_KEY: ${PUSHER_APP_KEY}
+      VITE_PUSHER_HOST: ${PUSHER_HOST}
+      VITE_PUSHER_PORT: ${PUSHER_PORT}
+      VITE_PUSHER_SCHEME: ${PUSHER_SCHEME}
+      VITE_PUSHER_APP_CLUSTER: ${PUSHER_APP_CLUSTER}
     depends_on:
       - soketi
     networks:
@@ -37,11 +44,13 @@ services:
     build:
       context: .
     container_name: masjid-queue
-    command: php artisan queue:work --sleep=1 --tries=3 --timeout=120
     volumes:
       - ./:/var/www/html
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
+      APP_NAME: "Aplikasi Jam Digital Masjid"
       APP_ENV: production
       APP_DEBUG: "false"
       DB_CONNECTION: mysql
@@ -51,6 +60,8 @@ services:
       DB_PASSWORD: yd2gtv
       QUEUE_CONNECTION: database
       BROADCAST_DRIVER: pusher
+      CACHE_DRIVER: file
+      SESSION_DRIVER: file
       PUSHER_APP_ID: masjid
       PUSHER_APP_KEY: masjid-key
       PUSHER_APP_SECRET: masjid-secret
@@ -58,9 +69,20 @@ services:
       PUSHER_PORT: 6001
       PUSHER_SCHEME: http
       PUSHER_APP_CLUSTER: mt1
+      VITE_PUSHER_APP_KEY: ${PUSHER_APP_KEY}
+      VITE_PUSHER_HOST: ${PUSHER_HOST}
+      VITE_PUSHER_PORT: ${PUSHER_PORT}
+      VITE_PUSHER_SCHEME: ${PUSHER_SCHEME}
+      VITE_PUSHER_APP_CLUSTER: ${PUSHER_APP_CLUSTER}
     depends_on:
-      - app
-      - soketi
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "
+      php artisan migrate --force &&
+      php artisan db:seed --force &&
+      php artisan queue:work --sleep=3 --tries=3
+      "
     networks:
       - masjid-network
 
