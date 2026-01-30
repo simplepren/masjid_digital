@@ -37,7 +37,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    healthcheck: null
+    healthcheck:
+      test: ["CMD-SHELL", "exit 0"]
+      interval: 30s
+      timeout: 5s
+      retries: 1
     command: >
       sh -c "
       php artisan migrate --force &&

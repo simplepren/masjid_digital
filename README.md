@@ -17,6 +17,14 @@ Ini adalah aplikasi untuk menampilkan jadwal sholat secara digital melalui sebua
 ```sh
 git clone https://github.com/simplepren/masjid_digital
 ```
+- Buka folder masjid_digital
+```sh
+cd masjid_digital
+```
+- Edit file .env.production
+```sh
+sudo nano .env.production
+```
 - Regitstrasi ke pusher.com, buat aplikasi dan ambil variabel di bawah ini dari pusher.com dan copas ke file .env.production
 ```sh
 PUSHER_APP_ID=
