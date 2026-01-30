@@ -6,8 +6,17 @@ use App\Events\DisplayUpdatesEvent;
 
 new class extends Component
 {
-    public string $template = 'template-one';
+    public string $template;
     public string $cursor = 'cursor-pointer';
+
+    public function mount()
+    {
+        $setting = DB::table('settings')->where('key', 'display_template')->first();
+        if ($setting) {
+            $value = json_decode($setting->value, true);
+            $this->template = $value['default'] ?? 'template-one';
+        }
+    }
 
     public function updatedTemplate($value)
     {
