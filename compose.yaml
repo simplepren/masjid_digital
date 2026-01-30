@@ -16,8 +16,6 @@ services:
       DB_PASSWORD: yd2gtv
     env_file:
       - .env.production
-    depends_on:
-      - soketi
     networks:
       - masjid-network
 
@@ -39,6 +37,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    healthcheck: null
     command: >
       sh -c "
       php artisan migrate --force &&

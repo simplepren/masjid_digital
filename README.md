@@ -1,11 +1,11 @@
-# Aplikasi Masjid Digital
+# Aplikasi Masjid Digital v1.0
 
 Ini adalah aplikasi untuk menampilkan jadwal sholat secara digital melalui sebuah display atau TV. Aplikasi ini free/berbasis open source dan dapat digunakan oleh siapa saja. Anda bisa mengubah dan memodifikasi aplikasi ini sesuai kebutuhan Anda tanpa harus meminta izin maupun memberikan atribusi apapun. Silakan gunakan dengan bijak.
 
 ## Fitur
 - Jadwal Sholat realtime, autosync dengan API https://api.myquran.com/
 - Profil Masjid
-- Setup durasi adzan, iqomah dan sholat
+- Bisa setup durasi adzan, iqomah dan sholat sesuai kebutuhan
 - Pengaturan kalender hijri (menambah/mengurangi offset) menyesuaikan keputusan pemerintah
 - Running text
 - Koleksi wallpaper dan bisa diset durasi pergantiannya
@@ -13,6 +13,7 @@ Ini adalah aplikasi untuk menampilkan jadwal sholat secara digital melalui sebua
 
 ## Panduan Instalasi
 - Install docker
+- Clone repository
 ```sh
 git clone https://github.com/simplepren/masjid_digital
 ```
@@ -25,6 +26,7 @@ PUSHER_APP_CLUSTER=
 PUSHER_PORT=443
 PUSHER_SCHEME=https
 ```
+- Jalankan perintah ini
 ```sh
 docker compose up -d --build
 ```
