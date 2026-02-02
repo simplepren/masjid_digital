@@ -17,5 +17,8 @@ Route::middleware(['auth'])->group(function () {
 Route::livewire('display', 'pages::display.index')->name('display');
 Route::livewire('/', 'pages::display.welcome')->name('home');
 
+// Ping connection test
+Route::get('/ping', fn () => response('OK', 200));
+
 
 require __DIR__.'/settings.php';

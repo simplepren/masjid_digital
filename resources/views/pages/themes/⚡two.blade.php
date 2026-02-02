@@ -583,6 +583,9 @@ new class extends Component
             this.updateDate();
             this.loopClockSwitch();
 
+            //auto reload setiap hari pukul 00:01
+            setupDailyReload();
+
             // 3. Restore State atau Start Fresh
             const restored = this.restoreState();
             if (!restored) {
@@ -1066,6 +1069,44 @@ new class extends Component
             });
         },
 
+        setupDailyReload() {
+            const scheduleReload = () => {
+                const now = new Date();
+                const target = new Date();
+
+                // target 00:01 atau 24:01 WIB
+                target.setHours(0, 1, 0, 0);
+
+                // kalau sudah lewat 00:01 → besok
+                if (now >= target) {
+                    target.setDate(target.getDate() + 1);
+                }
+
+                const delay = target.getTime() - now.getTime();
+                setTimeout(() => this.tryReload(), delay);
+            };
+
+            scheduleReload();
+        },
+
+        tryReload() {
+            const today = new Date().toDateString();
+            if (localStorage.getItem('last_reload') === today) return;
+
+            if (!navigator.onLine) {
+                setTimeout(() => this.tryReload(), 5 * 60 * 1000);
+                return;
+            }
+
+            fetch('/ping', { cache: 'no-store' })
+                .then(() => {
+                    localStorage.setItem('last_reload', today);
+                    location.reload();
+                })
+                .catch(() => {
+                    setTimeout(() => this.tryReload(), 5 * 60 * 1000);
+                });
+        },
 
     }));
 
