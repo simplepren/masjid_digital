@@ -12,7 +12,7 @@ Ini adalah aplikasi untuk menampilkan jadwal sholat secara digital melalui sebua
 - Pemilihan template display TV
 
 ## Panduan Instalasi
-- Install docker
+- Install docker (cari di google)
 - Clone repository
 ```sh
 git clone https://github.com/simplepren/masjid_digital
@@ -23,13 +23,13 @@ cd masjid_digital
 ```
 - Copy file file environment
 ```sh
-cp .env.production .env
+cp .env.example .env
 ```
 - Edit file .env
 ```sh
 sudo nano .env
 ```
-- Regitstrasi ke pusher.com, buat aplikasi dan ambil variabel di bawah ini dari pusher.com dan copas ke file .env.production
+- Regitstrasi ke pusher.com, buat aplikasi dan ambil variabel di bawah ini dari pusher.com dan copas ke file .env
 ```sh
 PUSHER_APP_ID=
 PUSHER_APP_KEY=
@@ -41,6 +41,11 @@ PUSHER_SCHEME=https
 - Jalankan perintah ini
 ```sh
 docker compose up -d --build
+```
+- Pastikan tidak ada error. Kemudian jalankan perintah ini
+```sh
+docker exec -it masjid-app php artisan migrate --seed
+docker restart masjid-queue
 ```
 - Buka browser, akses http://localhost:9001 atau http://alamat_IP_server:9001.
 
