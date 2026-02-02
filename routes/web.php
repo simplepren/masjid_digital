@@ -1,6 +1,9 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 Route::middleware(['auth'])->group(function () {
     Route::livewire('/admin/dashboard', 'pages::adminpage.dashboard')->name('dashboard');
@@ -14,7 +17,13 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/admin/users', 'pages::adminpage.users')->name('admin.users');
 });
 
-Route::livewire('display', 'pages::display.index')->name('display');
+Route::livewire('display', 'pages::display.index')
+    ->withoutMiddleware([
+        StartSession::class,
+        ShareErrorsFromSession::class,
+        VerifyCsrfToken::class,
+    ])->name('display');
+    
 Route::livewire('/', 'pages::display.welcome')->name('home');
 
 // Ping connection test
