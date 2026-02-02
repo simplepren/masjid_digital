@@ -16,7 +16,7 @@ services:
       DB_HOST: db
       DB_PORT: 3306
       DB_DATABASE: jam_digital_masjid
-      DB_PASSWORD: yd2gtv
+      DB_PASSWORD: password
     env_file:
       - .env
     networks:
@@ -37,7 +37,7 @@ services:
       DB_HOST: db
       DB_PORT: 3306
       DB_DATABASE: jam_digital_masjid
-      DB_PASSWORD: yd2gtv
+      DB_PASSWORD: password
     env_file:
       - .env
     depends_on:
@@ -59,10 +59,10 @@ services:
     image: mysql:8.0
     container_name: masjid-db
     environment:
-      MYSQL_ROOT_PASSWORD: yd2gtv
+      MYSQL_ROOT_PASSWORD: password
       MYSQL_DATABASE: jam_digital_masjid
       MYSQL_USER: azpradana
-      MYSQL_PASSWORD: yd2gtv
+      MYSQL_PASSWORD: password
     networks:
       - masjid-network
     restart: always
@@ -81,9 +81,9 @@ services:
     ports:
       - "9002:80"
     environment:
-      PMA_HOST: db      # arahkan ke service database
+      PMA_HOST: db
       PMA_PORT: 3306
-      PMA_ARBITRARY: 1           # biar bisa input host manual
+      PMA_ARBITRARY: 1
     networks:
       - masjid-network
     depends_on:
