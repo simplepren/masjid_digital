@@ -44,9 +44,6 @@ services:
       retries: 1
     command: >
       sh -c "
-      php artisan migrate --force &&
-      php artisan db:seed --force &&
-      php artisan key:generate --force &&
       php artisan queue:work --sleep=3 --tries=3
       "
     networks:
