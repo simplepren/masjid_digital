@@ -2,6 +2,9 @@ services:
   app:
     build:
       context: .
+      args:
+        - VITE_PUSHER_APP_KEY=${PUSHER_APP_KEY}
+        - VITE_PUSHER_APP_CLUSTER=${PUSHER_APP_CLUSTER}
     container_name: masjid-app
     ports:
       - "9001:80"
@@ -23,6 +26,9 @@ services:
   queue:
     build:
       context: .
+      args:
+        - VITE_PUSHER_APP_KEY=${PUSHER_APP_KEY}
+        - VITE_PUSHER_APP_CLUSTER=${PUSHER_APP_CLUSTER}
     container_name: masjid-queue
     volumes:
       - ./:/var/www/html

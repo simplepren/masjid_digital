@@ -1,6 +1,12 @@
 FROM dunglas/frankenphp:latest
 WORKDIR /app
 ENV SERVER_NAME=":80"
+
+ARG VITE_PUSHER_APP_KEY
+ARG VITE_PUSHER_APP_CLUSTER
+ENV VITE_PUSHER_APP_KEY=$VITE_PUSHER_APP_KEY
+ENV VITE_PUSHER_APP_CLUSTER=$VITE_PUSHER_APP_CLUSTER
+
 RUN install-php-extensions \
     pdo_mysql \
     gd \
@@ -19,3 +25,6 @@ RUN npm install && npm run build
 
 RUN chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
+
+RUN chmod +x /app/entrypoint.sh
+ENTRYPOINT ["/app/entrypoint.sh"]

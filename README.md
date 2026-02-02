@@ -27,7 +27,7 @@ cp .env.production .env
 ```
 - Edit file .env
 ```sh
-sudo nano .env.production
+sudo nano .env
 ```
 - Regitstrasi ke pusher.com, buat aplikasi dan ambil variabel di bawah ini dari pusher.com dan copas ke file .env.production
 ```sh
