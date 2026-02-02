@@ -14,8 +14,9 @@ services:
       DB_PORT: 3306
       DB_DATABASE: jam_digital_masjid
       DB_PASSWORD: yd2gtv
+      RUN_MIGRATION: "true"
     env_file:
-      - .env.production
+      - .env
     networks:
       - masjid-network
 
@@ -32,8 +33,9 @@ services:
       DB_PORT: 3306
       DB_DATABASE: jam_digital_masjid
       DB_PASSWORD: yd2gtv
+      RUN_MIGRATION: "false"
     env_file:
-      - .env.production
+      - .env
     depends_on:
       db:
         condition: service_healthy

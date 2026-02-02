@@ -21,7 +21,11 @@ git clone https://github.com/simplepren/masjid_digital
 ```sh
 cd masjid_digital
 ```
-- Edit file .env.production
+- Copy file file environment
+```sh
+cp .env.production .env
+```
+- Edit file .env
 ```sh
 sudo nano .env.production
 ```
@@ -41,7 +45,7 @@ docker compose up -d --build
 - Buka browser, akses http://localhost:9001 atau http://alamat_IP_server:9001.
 
 ## Panduan Penggunaan
-- Login melalui route /login
+- Login melalui route /login, user: admin@masjid.com, pass: password
 - Lengkapi Profil Masjid
 - Sinkronisasi Jadwal Sholat pada menu Jadwal Sholat (API sebaiknya jangan diubah/diganti)
 - Atur Durasi Adzan, Iqomah, dan Sholat pada menu Pengaturan Sholat
