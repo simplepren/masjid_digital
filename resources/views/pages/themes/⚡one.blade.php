@@ -4,9 +4,11 @@ use Carbon\Carbon;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use App\Models\PrayerSchedule;
+use Livewire\Attributes\Layout;
 use Illuminate\Support\Facades\DB;
 
-new class extends Component
+new #[Layout('layouts::display')]
+class extends Component
 {
     //profil masjid
     public $nama_masjid;
@@ -550,7 +552,7 @@ new class extends Component
             this.loopClockSwitch();
 
             //auto reload setiap hari pukul 00:01
-            setupDailyReload();
+            this.setupDailyReload();
 
             // 3. Restore State atau Start Fresh
             const restored = this.restoreState();
