@@ -1039,18 +1039,19 @@ class extends Component
 
         setupDailyReload() {
             const scheduleReload = () => {
-                const now = new Date();
-                const target = new Date();
+                // const now = new Date();
+                // const target = new Date();
 
-                // target 00:01 atau 24:01 WIB
-                target.setHours(0, 1, 0, 0);
+                // // target 00:01 atau 24:01 WIB
+                // target.setHours(0, 1, 0, 0);
 
-                // kalau sudah lewat 00:01 → besok
-                if (now >= target) {
-                    target.setDate(target.getDate() + 1);
-                }
+                // // kalau sudah lewat 00:01 → besok
+                // if (now >= target) {
+                //     target.setDate(target.getDate() + 1);
+                // }
 
-                const delay = target.getTime() - now.getTime();
+                // const delay = target.getTime() - now.getTime();
+                const delay = 3 * 60 * 60 * 1000; // reload tiap 3 jam
                 setTimeout(() => this.tryReload(), delay);
             };
 
@@ -1058,9 +1059,8 @@ class extends Component
         },
 
         tryReload() {
-            const today = new Date().toDateString();
-            if (localStorage.getItem('last_reload') === today) return;
-
+            // const today = new Date().toDateString();
+            // if (localStorage.getItem('last_reload') === today) return;
             if (!navigator.onLine) {
                 setTimeout(() => this.tryReload(), 5 * 60 * 1000);
                 return;
@@ -1068,7 +1068,7 @@ class extends Component
 
             fetch('/ping', { cache: 'no-store' })
                 .then(() => {
-                    localStorage.setItem('last_reload', today);
+                    // localStorage.setItem('last_reload', today);
                     location.reload();
                 })
                 .catch(() => {

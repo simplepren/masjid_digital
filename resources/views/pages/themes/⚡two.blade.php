@@ -281,8 +281,8 @@ class extends Component
         <div class="absolute inset-0 bg-black/30"></div>
     </div>
     <div class="absolute inset-0 bg-black/30"></div>
-    <div class="absolute top-0 inset-x-0 h-14 bg-gray-900/90 text-white px-8 flex items-center justify-end z-10">
-        <div class="text-2xl flex items-center gap-3">
+    <div class="absolute top-0 inset-x-0 h-24 bg-gray-900/90 text-white px-8 flex items-center justify-end z-10">
+        <div class="text-4xl flex items-center gap-3">
             <div class="text-green-400 animate-pulse"><flux:icon.dot /></div>
             <span class="font-semibold text-teal-100" x-text="hari"></span>
             <span x-text="tanggalMasehi"></span>
@@ -290,22 +290,22 @@ class extends Component
             <span class="text-yellow-200" x-text="hijri"></span>
         </div>
     </div>
-    <div class="absolute top-0 left-0 w-6/12 bg-linear-to-r from-teal-800 via-teal-700 to-teal-500 h-32 rounded-br-[5rem] flex items-center gap-6 p-6 shadow-2xl z-20">
-        <div class="shrink-0">
+    <div class="absolute top-0 left-0 w-6/12 bg-linear-to-r from-teal-800 via-teal-700 to-teal-500 h-44 rounded-br-[5rem] flex items-center gap-6 p-6 shadow-2xl z-20">
+        <div class="shrink-0 px-6">
             @if($logo)
-                <img src="{{ asset('assets/images/'.$logo) }}" class="w-20 h-20 object-contain" alt="Logo">
+                <img src="{{ asset('assets/images/'.$logo) }}" class="w-32 h-32 object-contain" alt="Logo">
             @else
-                <span class="text-xl text-white">Logo</span>
+                <span class="text-2xl text-white">Logo</span>
             @endif
         </div>
-        <div class="flex flex-col">
-            <h1 class="text-white text-4xl font-bold tracking-tight">{{ $nama_masjid }}</h1>
-            <p class="text-teal-50 opacity-90 line-clamp-1">{{ $alamat }}</p>
-            <p class="text-teal-50 opacity-90 line-clamp-1">Telp. {{ $telp }}</p>
+        <div class="flex flex-col space-y-2">
+            <h1 class="text-white text-5xl font-bold tracking-tight">{{ $nama_masjid }}</h1>
+            <p class="text-teal-50 text-xl opacity-90 line-clamp-1">{{ $alamat }}</p>
+            <p class="text-teal-50 text-xl opacity-90 line-clamp-1">Telp. {{ $telp }}</p>
         </div>
     </div>
 
-    <div class="fixed top-38 left-8 opacity-20 hover:opacity-100 transition-opacity duration-500">
+    <div class="fixed top-50 left-8 opacity-20 hover:opacity-100 transition-opacity duration-500">
         <button 
             @click="toggleMute()" 
             class="p-4 rounded-full shadow-lg transition-all duration-300 transform hover:scale-110 active:scale-95"
@@ -326,31 +326,30 @@ class extends Component
         </button>
     </div>
 
-    <div class="absolute top-20 right-38 h-12 flex items-center w-40 z-20">
-        <div class="bg-teal-700 p-2.5 rounded-l-xl shadow-lg">
-            <flux:icon.clock class="w-7 h-7 text-white" />
+    <div class="absolute top-38 right-54 h-18 flex items-center w-64 z-20">
+        <div class="bg-teal-700 p-3 rounded-l-xl shadow-lg">
+            <flux:icon.clock class="w-12 h-12 text-white" />
         </div>
-        <div class="bg-white/95 backdrop-blur flex items-center gap-4 px-6 h-12 rounded-r-xl text-xl shadow-lg border-y-2 border-r-2 border-teal-600">
+        <div class="bg-white/95 backdrop-blur flex items-center gap-4 px-6 h-18 rounded-r-xl text-3xl shadow-lg border-y-2 border-r-2 border-teal-600">
             <span class="text-gray-600 font-medium" x-text="displayLabel(getNextPrayerObject())"></span>
             <span class="font-bold text-teal-700 tabular-nums" x-text="countdown"></span>
         </div>
     </div>
 
-    <div class="absolute bottom-12 right-0 left-48 h-28 bg-teal-900/80 backdrop-blur-md grid grid-cols-7 gap-0.5 p-0.5 shadow-2xl z-10">
+    <div class="absolute bottom-22 right-0 left-68 h-36 bg-teal-900/80 backdrop-blur-md grid grid-cols-7 gap-0.5 p-0.5 shadow-2xl z-10">
         <template x-for="(p, i) in prayers" :key="p.key">
-            <div class="flex flex-col items-center justify-center transition-all duration-500" 
+            <div class="flex flex-col items-center justify-center transition-all duration-500 space-y-2" 
                 :class="currentIndex() === i ? 'bg-yellow-700 border-2 border-yellow-500 text-white scale-105 z-20 shadow-lg' : 'bg-teal-700 text-white'">
-                <span class="text-xl font-medium" x-text="displayLabel(p)"></span>
-                <span class="text-4xl font-bold" x-text="p.time"></span>
+                <span class="text-3xl font-medium" x-text="displayLabel(p)"></span>
+                <span class="text-5xl font-bold" x-text="p.time"></span>
                 <template x-if="currentIndex() === i">
-                    <span class="text-[12px] uppercase tracking-widest font-black text-yellow-200 mt-1">Sekarang</span>
-                    
+                    <span class="text-[15px] uppercase tracking-widest font-black text-yellow-200 mt-1">Sekarang</span>
                 </template>
             </div>
         </template>
     </div>
 
-    <div class="absolute -bottom-2.5 -left-2 z-50 transform scale-110 w-60 h-60 flex items-center justify-center">
+    <div class="absolute bottom-8 left-8 z-50 transform scale-110 w-60 h-60 flex items-center justify-center">
         <div x-show="showAnalog" 
             x-cloak
             x-transition:enter="transition ease-out duration-1000"
@@ -369,30 +368,30 @@ class extends Component
             x-transition:leave="transition ease-in duration-1000"
             x-transition:leave-start="opacity-100 scale-100"
             x-transition:leave-end="opacity-0 scale-60"
-            class="absolute w-50 h-50 rounded-full bg-teal-600 flex justify-center items-center shadow-2xl">
-            <div class="bg-white w-44 h-44 rounded-full flex flex-col justify-center items-center shadow-lg">
-                <div class="text-5xl font-bold text-teal-700 tabular-nums" x-text="time"></div>
+            class="absolute w-68 h-68 rounded-full bg-teal-600 flex justify-center items-center shadow-2xl">
+            <div class="bg-white w-64 h-64 rounded-full flex flex-col justify-center items-center shadow-lg">
+                <div class="text-[82px] font-bold text-teal-700 tabular-nums" x-text="time"></div>
             </div>
         </div>
     </div>
 
-    <div class="absolute bottom-0 right-0 left-32 h-12 bg-black/90 flex items-center overflow-hidden border-t border-teal-500/30 z-10">
+    <div class="absolute bottom-0 right-0 left-32 h-22 bg-black/90 flex items-center overflow-hidden border-t border-teal-500/30 z-10">
         <div class="marquee-container w-full relative h-full flex items-center">
             <div class="marquee-content shrink-0 flex items-center">
                 @foreach($runningTexts as $text)
-                    <span class="text-white text-2xl px-12 flex items-center whitespace-nowrap">
+                    <span class="text-white text-4xl px-12 flex items-center whitespace-nowrap">
                         <span class="text-yellow-500 mr-3">✦</span> 
                         {{ $text }}
                     </span>
                 @endforeach
                 @foreach($runningTexts as $text)
-                    <span class="text-white text-2xl px-12 flex items-center whitespace-nowrap">
+                    <span class="text-white text-4xl px-12 flex items-center whitespace-nowrap">
                         <span class="text-yellow-500 mr-3">✦</span> 
                         {{ $text }}
                     </span>
                 @endforeach
                 @foreach($runningTexts as $text)
-                    <span class="text-white text-2xl px-12 flex items-center whitespace-nowrap">
+                    <span class="text-white text-4xl px-12 flex items-center whitespace-nowrap">
                         <span class="text-yellow-500 mr-3">✦</span> 
                         {{ $text }}
                     </span>
@@ -775,7 +774,7 @@ class extends Component
                 setTimeout(() => {
                     this.isClockTransitioning = false;
                 }, 1200); // sedikit di atas durasi transition
-            }, 10000);
+            }, 20000);
         },
 
         /* ================= NEW DAY ================= */
@@ -1073,18 +1072,16 @@ class extends Component
 
         setupDailyReload() {
             const scheduleReload = () => {
-                const now = new Date();
-                const target = new Date();
-
-                // target 00:01 atau 24:01 WIB
-                target.setHours(0, 1, 0, 0);
-
-                // kalau sudah lewat 00:01 → besok
-                if (now >= target) {
-                    target.setDate(target.getDate() + 1);
-                }
-
-                const delay = target.getTime() - now.getTime();
+                // const now = new Date();
+                // const target = new Date();
+                // // target 00:01 atau 24:01 WIB
+                // target.setHours(0, 1, 0, 0);
+                // // kalau sudah lewat 00:01 → besok
+                // if (now >= target) {
+                //     target.setDate(target.getDate() + 1);
+                // }
+                // const delay = target.getTime() - now.getTime();
+                const delay = 3 * 60 * 60 * 1000; // reload tiap 3 jam
                 setTimeout(() => this.tryReload(), delay);
             };
 
@@ -1092,8 +1089,8 @@ class extends Component
         },
 
         tryReload() {
-            const today = new Date().toDateString();
-            if (localStorage.getItem('last_reload') === today) return;
+            // const today = new Date().toDateString();
+            // if (localStorage.getItem('last_reload') === today) return;
 
             if (!navigator.onLine) {
                 setTimeout(() => this.tryReload(), 5 * 60 * 1000);
@@ -1102,7 +1099,7 @@ class extends Component
 
             fetch('/ping', { cache: 'no-store' })
                 .then(() => {
-                    localStorage.setItem('last_reload', today);
+                    // localStorage.setItem('last_reload', today);
                     location.reload();
                 })
                 .catch(() => {

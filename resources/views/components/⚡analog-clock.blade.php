@@ -11,9 +11,9 @@ new class extends Component
 <div class="analog-clock-wrapper">
     <style>
         .clock {
-            background: radial-gradient(var(--color-teal-300), var(--color-teal-700),var(--color-teal-900));
-            width: 200px;
-            height: 200px;
+            background: radial-gradient(var(--color-teal-500), var(--color-teal-700),var(--color-teal-900));
+            width: 270px;
+            height: 270px;
             margin: 20px auto;
             border-radius: 50%;
             border: 10px solid var(--color-teal-600);
@@ -22,8 +22,8 @@ new class extends Component
         }
 
         .dot {
-            width: 10px;
-            height: 10px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
             background: #ccc;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -36,43 +36,43 @@ new class extends Component
         .hour-hand {
             position: absolute;
             z-index: 5;
-            width: 3px;
-            height: 45px;
-            background: var(--color-gray-200);
-            top: 41px;
-            left: 50%;
+            width: 6px;
+            height: 65px;
+            background: var(--color-gray-100);
+            top: 60px;
+            left: 48%;
             margin-left: -1.5px;
             border-top-left-radius: 50%;
             border-top-right-radius: 50%;
-            transform-origin: 50% 50px;
+            transform-origin: 50% 67px;
         }
 
         .minute-hand {
             position: absolute;
             z-index: 6;
-            width: 3px;
-            height: 70px;
+            width: 5px;
+            height: 90px;
             background: var(--color-gray-100);
-            top: 20px;
+            top: 37px;
             left: 50%;
             margin-left: -1.5px;
             border-top-left-radius: 50%;
             border-top-right-radius: 50%;
-            transform-origin: 50% 73px;
+            transform-origin: 50% 90px;
         }
 
         .second-hand {
             position: absolute;
             z-index: 7;
-            width: 1.5px;
-            height: 84px;
+            width: 2px;
+            height: 100px;
             background: gold;
-            top: 5px;
+            top: 26px;
             left: 50%;
             margin-left: -0.75px;
             border-top-left-radius: 50%;
             border-top-right-radius: 50%;
-            transform-origin: 50% 87px;
+            transform-origin: 50% 100px;
         }
 
         .clock span {
@@ -86,25 +86,25 @@ new class extends Component
         }
 
         .h12 { top: 21px; left: 50%; margin-left: -7px; }
-        .h3  { top: 78px; right: 21px; }
+        .h3  { top: 114px; right: 21px; }
         .h6  { bottom: 21px; left: 50%; margin-left: -4px; }
-        .h9  { left: 22px; top: 78px; }
+        .h9  { left: 22px; top: 114px; }
 
         .diallines {
             position: absolute;
             z-index: 2;
             width: 1.5px;
             height: 10px;
-            background: var(--color-gray-100);
+            background: var(--color-gray-300);
             left: 50%;
             margin-left: -0.75px;
-            transform-origin: 50% 90px;
+            transform-origin: 60% 125px;
         }
 
         .diallines:nth-of-type(5n) {
             width: 3px;
             height: 17px;
-            transform-origin: 50% 90px;
+            transform-origin: 60% 125px;
         }
 
         .info {

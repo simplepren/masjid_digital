@@ -38,7 +38,7 @@ new class extends Component
         $this->validate([
             'profile.nama_masjid' => 'required',
             'profile.alamat'      => 'required',
-            'profile.telp'        => 'required',
+            'profile.telp'        => 'nullable',
             'profile.kota'        => 'required',
             'logo'                => 'nullable|image|max:2048', // Validasi properti $logo
         ]);
@@ -94,11 +94,11 @@ new class extends Component
     <div class="w-full lg:w-1/2">
         <form wire:submit.prevent="setupMasjid">
             <div class="mb-3">
-                <flux:label class="text-sm">Nama Masjid</flux:label>
+                <flux:label class="text-sm">Nama Masjid <span class="text-pink-600">&nbsp;*</span></flux:label>
                 <flux:input wire:model="profile.nama_masjid" autocomplete="off" />
             </div>
             <div class="mb-3">
-                <flux:label class="text-sm">Alamat</flux:label>
+                <flux:label class="text-sm">Alamat <span class="text-pink-600">&nbsp;*</span></flux:label>
                 <flux:input wire:model="profile.alamat" autocomplete="off" />
             </div>
             <div class="mb-3">
@@ -106,7 +106,7 @@ new class extends Component
                 <flux:input wire:model="profile.telp" autocomplete="off" />
             </div>
             <div class="mb-3">
-                <flux:label class="text-sm">Kota/Kabupaten (Untuk sinkronisasi jadwal shotal)</flux:label>
+                <flux:label class="text-sm">Kota/Kabupaten <span class="text-pink-600">&nbsp;*</span> (Untuk sinkronisasi jadwal shotal)</flux:label>
                 <flux:input wire:model="profile.kota" autocomplete="off" hidden/>
                 <flux:input wire:model="labelKota" autocomplete="off" wire:click="getCity" placeholder="Klik untuk cari data kota" icon="magnifying-glass"/>
             </div>

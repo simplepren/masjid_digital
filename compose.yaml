@@ -61,7 +61,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: password
       MYSQL_DATABASE: jam_digital_masjid
-      MYSQL_USER: azpradana
+      MYSQL_USER: masjid
       MYSQL_PASSWORD: password
     networks:
       - masjid-network
