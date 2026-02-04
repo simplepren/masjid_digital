@@ -45,7 +45,7 @@ docker compose up -d --build
 - Pastikan tidak ada error. Kemudian jalankan perintah ini
 ```sh
 docker exec -it masjid-app php artisan migrate --seed
-docker restart masjid-queue
+docker compose restart
 ```
 - Buka browser, akses http://localhost:9001 atau http://alamat_IP_server:9001.
 

@@ -34,7 +34,7 @@ class extends Component
             <div class="mt-4 text-xl font-semibold">Panduan Pengguna</div>
             <div>
                 <ol class="list-disc list-inside space-y-1 mt-2">
-                    <li>Login melalui route /login</li>
+                    <li>Login melalui route /login, gunakan login default (email: admin@masjid.com | pass: password)</li>
                     <li>Lengkapi Profil Masjid</li>
                     <li>Sinkronisasi Jadwal Sholat pada menu Jadwal Sholat (API sebaiknya jangan diubah/diganti)</li>
                     <li>Atur Durasi Adzan, Iqomah, dan Sholat pada menu Pengaturan Sholat</li>
