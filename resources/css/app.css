@@ -110,7 +110,7 @@ select:focus[data-flux-control] {
 
 .marquee-content {
   display: inline-block;
-  animation: jalan-terus 100s linear infinite; /* Atur durasi di sini */
+  animation: jalan-terus 160s linear infinite; /* Atur durasi di sini */
 }
 
 .marquee-content span {

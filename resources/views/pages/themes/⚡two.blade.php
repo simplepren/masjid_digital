@@ -66,6 +66,7 @@ class extends Component
             'correctionUpdated'    => $this->handlePrayerRelatedUpdate(),
             'prayerSettingUpdated' => $this->handlePrayerRelatedUpdate(),
             'hijriUpdated'         => $this->handleHijriUpdate(),
+            'textSliderUpdated'    => $this->getTextSlider(),
             default                => null,
         };
     }
@@ -420,12 +421,12 @@ class extends Component
                         {{ $text }}
                     </span>
                 @endforeach
-                @foreach($runningTexts as $text)
+                {{-- @foreach($runningTexts as $text)
                     <span class="text-white text-4xl px-12 flex items-center whitespace-nowrap">
                         <span class="text-yellow-500 mr-3">✦</span> 
                         {{ $text }}
                     </span>
-                @endforeach
+                @endforeach --}}
             </div>
         </div>
     </div>
@@ -1140,31 +1141,31 @@ class extends Component
                 });
         },
 
-initTextSlider() {
-    if (!this.textSlider || this.textSlider.length === 0) return;
+        initTextSlider() {
+            if (!this.textSlider || this.textSlider.length === 0) return;
 
-    // jangan double interval
-    this.stopTextSlider();
+            // jangan double interval
+            this.stopTextSlider();
 
-    this.sliderTimer = setInterval(() => {
-        // 🔒 guard ekstra
-        if (this.mode !== 'COUNTDOWN') return;
+            this.sliderTimer = setInterval(() => {
+                // 🔒 guard ekstra
+                if (this.mode !== 'COUNTDOWN') return;
 
-        this.nextSlide();
-    }, this.sliderInterval);
-},
+                this.nextSlide();
+            }, this.sliderInterval);
+        },
 
-nextSlide() {
-    this.activeSlide =
-        (this.activeSlide + 1) % this.textSlider.length;
-},
+        nextSlide() {
+            this.activeSlide =
+                (this.activeSlide + 1) % this.textSlider.length;
+        },
 
-stopTextSlider() {
-    if (this.sliderTimer) {
-        clearInterval(this.sliderTimer);
-        this.sliderTimer = null;
-    }
-},
+        stopTextSlider() {
+            if (this.sliderTimer) {
+                clearInterval(this.sliderTimer);
+                this.sliderTimer = null;
+            }
+        },
 
 
     }));

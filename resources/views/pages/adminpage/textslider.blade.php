@@ -64,7 +64,7 @@ new class extends Component
     {
         DB::table('text_sliders')->where('id', $this->id_text)->delete();
         $this->dispatch('toast', type: 'success', message: 'Text slider berhasil dihapus.');
-        event(new DisplayUpdatesEvent('textSliderUpdated', []));
+        event(new DisplayUpdatesEvent('reloadDisplay', []));
         $this->closeModalDelete();
     }
 
@@ -97,7 +97,7 @@ new class extends Component
             ]);
         }
         $this->dispatch('toast', type: 'success', message: 'Text slider berhasil disimpan.');
-        event(new DisplayUpdatesEvent('textSliderUpdated', []));
+        event(new DisplayUpdatesEvent('reloadDisplay', []));
         $this->closeModal();
     }
 
