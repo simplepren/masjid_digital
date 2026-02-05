@@ -40,7 +40,7 @@ new class extends Component
             height: 65px;
             background: var(--color-gray-100);
             top: 60px;
-            left: 48%;
+            left: 49%;
             margin-left: -1.5px;
             border-top-left-radius: 50%;
             border-top-right-radius: 50%;

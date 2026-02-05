@@ -22,6 +22,7 @@
                 <flux:sidebar.item icon="cog-6-tooth" :current="request()->routeIs('admin.prayersetting')" href="{{ route('admin.prayersetting') }}">Pengaturan Sholat</flux:sidebar.item>
                 <flux:sidebar.item icon="calendar-day" :current="request()->routeIs('admin.hijrisetting')" href="{{ route('admin.hijrisetting') }}">Pengaturan Hijriyah</flux:sidebar.item>
                 <flux:sidebar.item icon="text-initial" :current="request()->routeIs('admin.runningtexts')" href="{{ route('admin.runningtexts') }}">Running Text</flux:sidebar.item>
+                <flux:sidebar.item icon="panel-right" :current="request()->routeIs('admin.textsliders')" href="{{ route('admin.textsliders') }}">Text Slider</flux:sidebar.item>
                 <flux:sidebar.item icon="images" :current="request()->routeIs('admin.wallpapers')" href="{{ route('admin.wallpapers') }}">Wallpaper</flux:sidebar.item>
                 <flux:sidebar.item icon="pallette" :current="request()->routeIs('admin.displaythemes')" href="{{ route('admin.displaythemes') }}">Template Display</flux:sidebar.item>
                 <flux:sidebar.item icon="users" :current="request()->routeIs('admin.users')" href="{{ route('admin.users') }}">Setup User</flux:sidebar.item>

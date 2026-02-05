@@ -11,6 +11,7 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/admin/masjidprofile', 'pages::adminpage.masjidprofile')->name('admin.masjidprofile');
     Route::livewire('/admin/prayersetting', 'pages::adminpage.prayersetting')->name('admin.prayersetting');
     Route::livewire('/admin/runningtext', 'pages::adminpage.runningtexts')->name('admin.runningtexts');
+    Route::livewire('/admin/textslider', 'pages::adminpage.textslider')->name('admin.textsliders');
     Route::livewire('/admin/hijrisetting', 'pages::adminpage.hijrisetting')->name('admin.hijrisetting');
     Route::livewire('/admin/wallpaper', 'pages::adminpage.wallpapers')->name('admin.wallpapers');
     Route::livewire('/admin/displaythemes', 'pages::adminpage.displaythemes')->name('admin.displaythemes');

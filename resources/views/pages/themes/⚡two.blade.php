@@ -28,6 +28,7 @@ class extends Component
     public array $runningTexts = [];
     public int $hijriOffset = 0;
     public string $currentDate;
+    public array $textSlider = [];
 
     public function mount()
     {
@@ -39,6 +40,7 @@ class extends Component
         $this->getRunningTexts();
         $this->getDurasiSholat();
         $this->getHijriOffset();
+        $this->getTextSlider();
     }
 
     public function getMasjidProfile()
@@ -229,18 +231,23 @@ class extends Component
 
     public function getRunningTexts()
     {
-        $defaultTexts = [
-            'Sholat berjamaah itu lebih utama daripada sholat sendiri',
-            'Mohon pastikan alat komunikasi dalam mode senyap atau dimatikan selama sholat berjamaah',
-        ];
-
         $texts = DB::table('running_texts')
             ->where('active', true)
             ->orderBy('order_index')
             ->pluck('text')
             ->toArray();
         
-        $this->runningTexts = !empty($texts) ? $texts : $defaultTexts;
+        $this->runningTexts = $texts;
+    }
+
+
+    public function getTextSlider()
+    {
+        $this->textSlider = DB::table('text_sliders')
+            ->where('active', true)
+            ->orderBy('order_index')
+            ->pluck('text')
+            ->toArray();
     }
 
 };
@@ -254,6 +261,7 @@ class extends Component
         durasiIqomah: @js($durasiIqomah),
         durasiSholat: @js($durasiSholat),
         hijriOffset: @js($hijriOffset),
+        textSlider: @js($textSlider),
     })"
     x-init="init()" 
     x-on:prayers-updated="updatePrayers($event.detail.prayers); updateSettings($event.detail.settings);"
@@ -278,9 +286,8 @@ class extends Component
             :class="isTransitioning ? 'opacity-0' : 'opacity-100'"
             :style="`background-image: url('/assets/images/wallpaper/${current}')`"
         ></div>
-        <div class="absolute inset-0 bg-black/30"></div>
     </div>
-    <div class="absolute inset-0 bg-black/30"></div>
+    <div class="absolute inset-0 bg-black/20"></div>
     <div class="absolute top-0 inset-x-0 h-24 bg-gray-900/90 text-white px-8 flex items-center justify-end z-10">
         <div class="text-4xl flex items-center gap-3">
             <div class="text-green-400 animate-pulse"><flux:icon.dot /></div>
@@ -326,7 +333,30 @@ class extends Component
         </button>
     </div>
 
-    <div class="absolute top-38 right-54 h-18 flex items-center w-64 z-20">
+    <div 
+        x-data
+        class="absolute inset-0 z-20 flex items-center justify-center overflow-hidden"
+    >
+        <template x-for="(text, index) in textSlider" :key="index">
+            <div
+                x-show="activeSlide === index"
+                x-transition:enter="transition transform duration-700 ease-in-out"
+                x-transition:enter-start="translate-x-full opacity-0"
+                x-transition:enter-end="translate-x-0 opacity-100"
+                x-transition:leave="transition transform duration-700 ease-in-out absolute"
+                x-transition:leave-start="translate-x-0 opacity-100"
+                x-transition:leave-end="-translate-x-full opacity-0"
+                class="w-full flex justify-center"
+            >
+                <div class="text-gray-900 text-center bg-white/90 backdrop-blur-md rounded-2xl p-6 text-4xl max-w-[75%]">
+                    <span x-text="text"></span>
+                </div>
+            </div>
+        </template>
+    </div>
+
+
+    <div class="absolute top-36 right-50 h-18 flex items-center w-64 z-20">
         <div class="bg-teal-700 p-3 rounded-l-xl shadow-lg">
             <flux:icon.clock class="w-12 h-12 text-white" />
         </div>
@@ -539,7 +569,7 @@ class extends Component
         }
     }));
 
-    Alpine.data('masjidApp', ({ prayerTimes, durasiAdzan, durasiIqomah, durasiSholat, hijriOffset }) => ({
+    Alpine.data('masjidApp', ({ prayerTimes, durasiAdzan, durasiIqomah, durasiSholat, hijriOffset, textSlider }) => ({
         // --- DATA & STATE ---
         prayers: prayerTimes,
         mode: 'COUNTDOWN', // ADZAN, IQOMAH, SHOLAT, COUNTDOWN
@@ -554,6 +584,12 @@ class extends Component
         isMuted: localStorage.getItem('audio_muted') === 'true',
         showAnalog: true,
         isClockTransitioning: false,
+
+        // Slider
+        textSlider: textSlider,
+        activeSlide: 0,
+        sliderTimer: null,
+        sliderInterval: 12000, // 10 detik
 
         // Timer States
         adzanRemaining: 0,
@@ -586,6 +622,9 @@ class extends Component
 
             //auto reload setiap hari pukul 00:01
             this.setupDailyReload();
+
+            // Slider
+            this.initTextSlider();
 
             // 3. Restore State atau Start Fresh
             const restored = this.restoreState();
@@ -1100,6 +1139,33 @@ class extends Component
                     setTimeout(() => this.tryReload(), 5 * 60 * 1000);
                 });
         },
+
+initTextSlider() {
+    if (!this.textSlider || this.textSlider.length === 0) return;
+
+    // jangan double interval
+    this.stopTextSlider();
+
+    this.sliderTimer = setInterval(() => {
+        // 🔒 guard ekstra
+        if (this.mode !== 'COUNTDOWN') return;
+
+        this.nextSlide();
+    }, this.sliderInterval);
+},
+
+nextSlide() {
+    this.activeSlide =
+        (this.activeSlide + 1) % this.textSlider.length;
+},
+
+stopTextSlider() {
+    if (this.sliderTimer) {
+        clearInterval(this.sliderTimer);
+        this.sliderTimer = null;
+    }
+},
+
 
     }));
 

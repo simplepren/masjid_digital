@@ -6,12 +6,9 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('running_texts', function (Blueprint $table) {
+        Schema::create('text_sliders', function (Blueprint $table) {
             $table->id();
             $table->text('text', 2000);
             $table->boolean('active')->default(true);
@@ -22,6 +19,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('running_texts');
+        Schema::dropIfExists('text_sliders');
     }
 };
