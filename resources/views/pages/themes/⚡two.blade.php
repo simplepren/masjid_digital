@@ -265,7 +265,7 @@ class extends Component
         textSlider: @js($textSlider),
     })"
     x-init="init()" 
-    x-on:prayers-updated="updatePrayers($event.detail.prayers); updateSettings($event.detail.settings);"
+    x-on:prayers-updated="applyPrayerUpdate($event.detail)"
     class="h-screen w-screen overflow-hidden relative" 
     x-cloak 
     >
@@ -468,7 +468,18 @@ class extends Component
             </div>
             <div class="flex justify-center mb-12 shadow-2xl">
                 <template x-if="mode === 'ADZAN' || mode === 'IQOMAH'">
-                    <div x-ref="flipTunggal" id="flip-container"></div>
+                    <div class="flex items-center justify-center gap-3 font-mono tabular-nums select-none">
+                        <template x-for="(char, index) in phaseCountdown.split('')" :key="`${mode}-${index}`">
+                            <span
+                                x-text="char"
+                                class="inline-flex items-center justify-center font-black leading-none"
+                                :class="char === ':'
+                                    ? 'w-10 text-[8rem]'
+                                    : 'w-28 h-40 rounded-2xl bg-white/80 border-4 border-[#927a38]/30 shadow-2xl text-[9rem]'"
+                                style="color:#927a38"
+                            ></span>
+                        </template>
+                    </div>
                 </template>
             </div>
             <div class="relative h-20 mt-10 flex items-center justify-center">
@@ -501,7 +512,7 @@ class extends Component
             <div class="h-2 rounded-full bg-black overflow-hidden w-full border border-gray-700">
                 {{-- Bagian yang bergerak (Progress) --}}
                 <div class="h-full bg-yellow-700 transition-all duration-1000 ease-linear"
-                    :style="`width: ${ (sholatRemaining / totalSholatDuration) * 100 }%`"
+                    :style="`width: ${ totalSholatDuration > 0 ? (sholatRemaining / totalSholatDuration) * 100 : 0 }%`"
                 ></div>
             </div>
         </div>
@@ -560,8 +571,7 @@ class extends Component
         },
 
         updateDuration(newDuration) {
-            // console.log('updateDuration', newDuration);
-            this.duration = newDuration;
+            this.duration = Number(newDuration) * 1000;
             this.startTimer();
         },
 
@@ -571,471 +581,748 @@ class extends Component
     }));
 
     Alpine.data('masjidApp', ({ prayerTimes, durasiAdzan, durasiIqomah, durasiSholat, hijriOffset, textSlider }) => ({
-        // --- DATA & STATE ---
-        prayers: prayerTimes,
-        mode: 'COUNTDOWN', // ADZAN, IQOMAH, SHOLAT, COUNTDOWN
+        // =============================================================
+        // UI STATE
+        // =============================================================
+        prayers: prayerTimes ?? [],
+        mode: 'COUNTDOWN', // COUNTDOWN | ADZAN | IQOMAH | SHOLAT
         nextIndex: 0,
+        activePrayerKey: null,
+        activePrayerDate: null,
+
         time: '',
-        hijriOffset: hijriOffset,
         hari: '',
-        baseHijriDate: null, // simpan tanggal hijri default tanpa offset
-        hijri: '',
         tanggalMasehi: '',
+        hijri: '',
+        baseHijriDate: null,
+        hijriOffset: Number(hijriOffset ?? 0),
         countdown: '',
+        phaseCountdown: '00:00',
+        currentPrayerName: '',
+
         isMuted: localStorage.getItem('audio_muted') === 'true',
         showAnalog: true,
         isClockTransitioning: false,
 
         // Slider
-        textSlider: textSlider,
+        textSlider: textSlider ?? [],
         activeSlide: 0,
         sliderTimer: null,
-        sliderInterval: 12000, // 10 detik
+        sliderInterval: 12000,
 
-        // Timer States
+        // Prayer settings
+        durasiAdzan: durasiAdzan ?? {},
+        durasiIqomah: durasiIqomah ?? {},
+        durasiSholat: durasiSholat ?? {},
+
+        // Derived timer values consumed by Blade
         adzanRemaining: 0,
         iqomahRemaining: 0,
         sholatRemaining: 0,
-        totalSholatDuration: 0,
-        currentPrayerName: '',
+        totalSholatDuration: 1,
 
-        //durasi sholat
-        durasiAdzan: durasiAdzan,
-        durasiIqomah: durasiIqomah,
-        durasiSholat: durasiSholat,
+        // =============================================================
+        // ABSOLUTE-TIME ENGINE
+        // =============================================================
+        masterTimer: null,
+        dateTimer: null,
+        clockSwitchTimer: null,
+        reloadTimer: null,
 
-        // Internal
-        timer: null,
+        countdownTargetAt: null,
+        countdownTargetIndex: null,
+        phaseStartedAt: null,
+        phaseEndsAt: null,
+        phaseDurationSeconds: 0,
+        transitionLock: false,
+
         beepAudio1: null,
         beepAudio2: null,
         todayKey: new Date().toDateString(),
 
-        
+        STORAGE_KEY: 'masjid_state_v2',
+        STORAGE_VERSION: 2,
+
         init() {
-            // 1. Setup Audio
             this.beepAudio1 = new Audio("{{ asset('assets/audio/beep-01.mp3') }}");
             this.beepAudio2 = new Audio("{{ asset('assets/audio/beep-02.mp3') }}");
 
-            // 2. Initial Run
             this.updateClock();
             this.updateDate();
+            this.initTextSlider();
             this.loopClockSwitch();
-
-            //auto reload setiap hari pukul 00:01
             this.setupDailyReload();
 
-            // Slider
-            this.initTextSlider();
-
-            // 3. Restore State atau Start Fresh
-            const restored = this.restoreState();
-            if (!restored) {
-                this.updateNextIndex();
-                this.tickCountdown();
+            // Restore deadline state. Bila tidak ada/invalid, rekonstruksi keadaan
+            // dari jadwal hari ini agar reload/sleep di tengah fase tetap aman.
+            if (!this.restoreState()) {
+                this.reconcileFromSchedule(Date.now());
             }
 
-            // 4. Master Interval (Setiap 1 Detik)
-            setInterval(() => {
-                this.updateClock();
-
-                if (this.mode === 'COUNTDOWN') {
-                    this.checkNewDay();
-                    this.updateNextIndex();
-                    this.tickCountdown();
-                }
-            }, 1000);
-
-            // Update Tanggal tiap menit
-            setInterval(() => {
-                this.updateDate();
-            }, 60000);
+            this.startMasterClock();
         },
 
-        updatePrayers(newData) {
-            // console.log("Jadwal Sholat Diperbarui:", newData);
-            if (!Array.isArray(newData)) return;
-            this.prayers = newData;
-            this.updateNextIndex();
-            this.tickCountdown();
+        destroy() {
+            this.stopMasterClock();
+            this.stopTextSlider();
+
+            if (this.dateTimer) clearInterval(this.dateTimer);
+            if (this.clockSwitchTimer) clearInterval(this.clockSwitchTimer);
+            if (this.reloadTimer) clearTimeout(this.reloadTimer);
+
+            this.dateTimer = null;
+            this.clockSwitchTimer = null;
+            this.reloadTimer = null;
         },
 
-        updateSettings(settings) {
-            if (!settings) return;
-            // console.log("Settings Diperbarui:", settings);
-            if (settings.durasiAdzan) {
-                this.durasiAdzan = settings.durasiAdzan;
-            }
-            if (settings.durasiIqomah) {
-                this.durasiIqomah = settings.durasiIqomah;
-            }
-            if (settings.durasiSholat) {
-                this.durasiSholat = settings.durasiSholat;
-            }
-            if (Object.prototype.hasOwnProperty.call(settings, 'hijriOffset')) {
-                this.hijriOffset = Number(settings.hijriOffset);
-                this.applyHijriOffset();
-            }
+        // =============================================================
+        // MASTER HEARTBEAT
+        // setInterval hanya heartbeat. Sumber kebenaran waktu selalu Date.now().
+        // =============================================================
+        startMasterClock() {
+            this.stopMasterClock();
+
+            this.masterTimer = setInterval(() => {
+                this.tick(Date.now());
+            }, 250);
+
+            this.dateTimer = setInterval(() => this.updateDate(), 60000);
         },
 
-        updateClock() {
-            this.time = new Date().toLocaleTimeString('en-GB', {
-                hour: '2-digit', minute: '2-digit', hour12: false
-            });
+        stopMasterClock() {
+            if (this.masterTimer) clearInterval(this.masterTimer);
+            this.masterTimer = null;
         },
 
-        applyHijriOffset() {
-            if (!this.baseHijriDate) return;
+        tick(nowMs = Date.now()) {
+            this.updateClock();
+            this.checkNewDay();
 
-            const hijriDate = new Date(this.baseHijriDate);
-            // console.log('tanggal hijri', hijriDate);
-            hijriDate.setDate(hijriDate.getDate() + this.hijriOffset);
+            if (this.transitionLock) return;
 
-            this.hijri = new Intl.DateTimeFormat(
-                'id-ID-u-ca-islamic-umalqura',
-                { day: 'numeric', month: 'long', year: 'numeric' }
-            ).format(hijriDate);
-        },
-
-
-        updateHijriDate(now = new Date()) {
-            // BASE DATE (tanpa offset)
-            const baseDate = new Date(now);
-
-            const isAfterMaghrib =
-                localStorage.getItem('hijri_is_after_maghrib') === '1';
-
-            if (isAfterMaghrib) {
-                baseDate.setDate(baseDate.getDate() + 1);
-            }
-
-            // simpan base hijri
-            this.baseHijriDate = new Date(baseDate);
-
-            // apply offset ABSOLUTE
-            baseDate.setDate(baseDate.getDate() + this.hijriOffset);
-
-            this.hijri = new Intl.DateTimeFormat(
-                'id-ID-u-ca-islamic-umalqura',
-                { day: 'numeric', month: 'long', year: 'numeric' }
-            ).format(baseDate);
-        },
-
-
-        updateDate() {
-            const now = new Date();
-
-            const namaHari = ["Ahad", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
-            this.hari = namaHari[now.getDay()] + ',';
-
-            this.tanggalMasehi = now.toLocaleDateString('id-ID', {
-                day: '2-digit',
-                month: 'long',
-                year: 'numeric'
-            });
-
-            // hijri ikut dihitung
-            this.updateHijriDate(now);
-        },
-
-        tickCountdown() {
-            const now = new Date();
-            const event = this.prayers[this.nextIndex];
-            if (!event) return;
-
-            const [h, m] = event.time.split(':').map(Number);
-            const target = new Date(now);
-
-            target.setHours(h, m, 0, 0);
-
-            if (target <= now) target.setDate(target.getDate() + 1);
-            const diff = Math.floor((target - now) / 1000);
-
-            if (diff <= 0) {
-                if (event.hasAdzan) this.startAdzan();
+            if (this.mode === 'COUNTDOWN') {
+                this.tickCountdown(nowMs);
                 return;
             }
 
+            this.tickActivePhase(nowMs);
+        },
+
+        tickActivePhase(nowMs) {
+            if (!this.phaseEndsAt) {
+                this.reconcileFromSchedule(nowMs);
+                return;
+            }
+
+            const remaining = Math.max(0, Math.ceil((this.phaseEndsAt - nowMs) / 1000));
+            this.setPhaseRemaining(remaining);
+
+            if (nowMs >= this.phaseEndsAt) {
+                this.advancePhase(nowMs);
+            }
+        },
+
+        setPhaseRemaining(seconds) {
+            const safe = Math.max(0, Number(seconds) || 0);
+            this.phaseCountdown = this.formatPhaseTime(safe);
+
+            this.adzanRemaining = this.mode === 'ADZAN' ? safe : 0;
+            this.iqomahRemaining = this.mode === 'IQOMAH' ? safe : 0;
+            this.sholatRemaining = this.mode === 'SHOLAT' ? safe : 0;
+        },
+
+        formatPhaseTime(totalSeconds) {
+            const mins = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+            const secs = String(totalSeconds % 60).padStart(2, '0');
+            return `${mins}:${secs}`;
+        },
+
+        // =============================================================
+        // COUNTDOWN -> PRAYER EVENT
+        // Target disimpan sebagai timestamp absolut agar callback terlambat
+        // tidak menyebabkan event sholat terlewat.
+        // =============================================================
+        tickCountdown(nowMs) {
+            if (!this.countdownTargetAt || this.countdownTargetIndex === null) {
+                this.selectNextCountdownTarget(nowMs);
+            }
+
+            if (!this.countdownTargetAt || this.countdownTargetIndex === null) return;
+
+            if (nowMs >= this.countdownTargetAt) {
+                const reachedIndex = this.countdownTargetIndex;
+                const scheduledAt = this.countdownTargetAt;
+                this.handleReachedPrayer(reachedIndex, scheduledAt, nowMs);
+                return;
+            }
+
+            const diff = Math.max(0, Math.ceil((this.countdownTargetAt - nowMs) / 1000));
             const hrs = String(Math.floor(diff / 3600)).padStart(2, '0');
             const mins = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
             const secs = String(diff % 60).padStart(2, '0');
-
             this.countdown = `-${hrs}:${mins}:${secs}`;
         },
 
-
-        saveState() {
-            localStorage.setItem('masjid_state', JSON.stringify({
-                mode: this.mode,
-                nextIndex: this.nextIndex,
-                remaining: this.getRemaining(),
-                timestamp: Date.now()
-            }));
-        },
-
-        restoreState() {
-            const raw = localStorage.getItem('masjid_state');
-            if (!raw) return false;
-
-            const data = JSON.parse(raw);
-            const remaining = data.remaining - Math.floor((Date.now() - data.timestamp) / 1000);
-
-            if (remaining <= 0) {
-                this.clearState();
-                return false;
+        selectNextCountdownTarget(nowMs = Date.now()) {
+            const next = this.findNextPrayerOccurrence(nowMs);
+            if (!next) {
+                this.countdownTargetAt = null;
+                this.countdownTargetIndex = null;
+                this.countdown = '--:--:--';
+                return;
             }
 
-            this.nextIndex = data.nextIndex;
-            this.mode = data.mode;
-
-            if (this.mode === 'ADZAN') this.startAdzan(remaining, true);
-            else if (this.mode === 'IQOMAH') this.startIqomah(remaining);
-            else if (this.mode === 'SHOLAT') this.startSholat(remaining);
-            return true;
+            this.nextIndex = next.index;
+            this.countdownTargetIndex = next.index;
+            this.countdownTargetAt = next.at;
         },
 
-        getRemaining() {
-            if (this.mode === 'ADZAN') return this.adzanRemaining;
-            if (this.mode === 'IQOMAH') return this.iqomahRemaining;
-            if (this.mode === 'SHOLAT') return this.sholatRemaining;
-            return 0;
-        },
+        findNextPrayerOccurrence(nowMs) {
+            if (!Array.isArray(this.prayers) || this.prayers.length === 0) return null;
 
-        clearState() { 
-            localStorage.removeItem('masjid_state'); 
-        },
-
-        loopClockSwitch() {
-            setInterval(() => {
-                if (this.isClockTransitioning) return;
-
-                this.isClockTransitioning = true;
-                this.showAnalog = !this.showAnalog;
-
-                setTimeout(() => {
-                    this.isClockTransitioning = false;
-                }, 1200); // sedikit di atas durasi transition
-            }, 20000);
-        },
-
-        /* ================= NEW DAY ================= */
-        onNewDay() {
-            this.clearTimer();
-            this.clearState();
-            this.clearBeepFlags();
-
-            this.mode = 'COUNTDOWN';
-            this.countdown = '';
-
-            this.updateNextIndex();
-            localStorage.setItem('last_daily_reload', new Date().toDateString());
-
-            // 🔥 trigger Livewire refresh
-            this.$dispatch('refresh-schedule'); //refresh jadwal sholat pada 00.01 WIB            
-            localStorage.removeItem('hijri_is_after_maghrib'); // Reset flag Hijriah
-            window.dispatchEvent(new Event('hijri-after-maghrib')); // Refresh tampilan
-        },
-        
-        // Called when a new day is detected
-        checkNewDay() {
-            const today = new Date().toDateString();
-            if (today !== this.todayKey) {
-                this.todayKey = today;
-                this.onNewDay();
-            }
-        },
-
-        currentIndex() {
-            if (this.nextIndex === null) return -1;
-
-                // KASUS A: Jika sekarang sudah lewat Isya (mengejar Subuh besok, nextIndex = 0)
-                if (this.nextIndex === 0) {
-                    const now = new Date();
-                    const nowMin = now.getHours() * 60 + now.getMinutes();
-                    
-                    // Ambil waktu subuh hari ini
-                    const [h, m] = this.prayers[0].time.split(':').map(Number);
-                    const subuhMin = h * 60 + m;
-                    if (nowMin > subuhMin) {
-                        return 6;
-                    }
-                    return 6;
-                }
-                return this.nextIndex - 1;
-        },
-
-        updateNextIndex() {
-            if (this.mode !== 'COUNTDOWN') return; // Kunci index jika sedang adzan/sholat
-            if (!this.prayers || this.prayers.length === 0) return;
-
-            const now = new Date();
-            const nowMin = now.getHours() * 60 + now.getMinutes();
-            
-            // 1. Logika Hijriah (Maghrib)
-            const maghrib = this.prayers.find(p => p.key === 'maghrib');
-            if (maghrib) {
-                const [h, m] = maghrib.time.split(':').map(Number);
-                const isPastMaghrib = nowMin >= (h * 60 + m);
-                const currentFlag = localStorage.getItem('hijri_is_after_maghrib');
-
-                if (isPastMaghrib && currentFlag !== '1') {
-                    localStorage.setItem('hijri_is_after_maghrib', '1');
-                    window.dispatchEvent(new Event('hijri-after-maghrib'));
-                } else if (!isPastMaghrib && currentFlag === '1') {
-                    localStorage.removeItem('hijri_is_after_maghrib');
-                    window.dispatchEvent(new Event('hijri-after-maghrib'));
-                }
-            }
-
-            // 2. Cari Next Index
-            let found = false;
+            const now = new Date(nowMs);
             for (let i = 0; i < this.prayers.length; i++) {
-                const [h, m] = this.prayers[i].time.split(':').map(Number);
-                if ((h * 60 + m) > nowMin) {
-                    this.nextIndex = i;
-                    found = true;
-                    break;
-                }
+                const at = this.prayerTimestamp(this.prayers[i], now);
+                if (at > nowMs) return { index: i, at };
             }
-            
-            // Jika tidak ada yang lebih besar (sudah malam), maka next adalah Subuh besok
-            if (!found) this.nextIndex = 0;
+
+            // Setelah event terakhir hari ini, target berikutnya adalah Subuh besok.
+            const tomorrow = new Date(now);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(0, 0, 0, 0);
+
+            return {
+                index: 0,
+                at: this.prayerTimestamp(this.prayers[0], tomorrow),
+            };
+        },
+
+        prayerTimestamp(prayer, baseDate = new Date()) {
+            if (!prayer?.time) return NaN;
+            const [h, m] = prayer.time.split(':').map(Number);
+            const dt = new Date(baseDate);
+            dt.setHours(h, m, 0, 0);
+            return dt.getTime();
+        },
+
+        handleReachedPrayer(index, scheduledAt, nowMs) {
+            const event = this.prayers[index];
+            if (!event) {
+                this.selectNextCountdownTarget(nowMs + 1000);
+                return;
+            }
+
+            // Event seperti Syuruq/Dhuha hanya menjadi marker countdown,
+            // tidak masuk ke state ADZAN.
+            if (!event.hasAdzan) {
+                this.countdownTargetAt = null;
+                this.countdownTargetIndex = null;
+                this.selectNextCountdownTarget(Math.max(nowMs, scheduledAt + 1000));
+                this.tickCountdown(nowMs);
+                return;
+            }
+
+            this.startAdzan({
+                prayerIndex: index,
+                startedAt: scheduledAt,
+                nowMs,
+                playAudio: true,
+            });
+        },
+
+        // Kompatibilitas untuk pemanggilan lama dari Blade/event lain.
+        updateNextIndex() {
+            if (this.mode !== 'COUNTDOWN') return;
+            this.selectNextCountdownTarget(Date.now());
         },
 
         getNextPrayerObject() {
             return this.prayers[this.nextIndex] || this.prayers[0];
         },
 
-        /* ================= Label Sholat ================= */
-        displayLabel(prayer) {
-            // PROTEKSI: Jika prayer undefined, kembalikan string kosong
-            if (!prayer) return ""; 
-
-            if (prayer.key === 'dzuhur' && new Date().getDay() === 5) {
-                return "Jum'ah";
+        currentIndex() {
+            if (this.mode !== 'COUNTDOWN' && this.activePrayerKey) {
+                return this.prayers.findIndex(p => p.key === this.activePrayerKey);
             }
+
+            if (this.nextIndex === null || !this.prayers.length) return -1;
+            if (this.nextIndex === 0) {
+                const now = Date.now();
+                const subuhToday = this.prayerTimestamp(this.prayers[0], new Date(now));
+                return now > subuhToday ? this.prayers.length - 1 : this.prayers.length - 1;
+            }
+            return this.nextIndex - 1;
+        },
+
+        // =============================================================
+        // PHASE STATE MACHINE
+        // =============================================================
+        startAdzan({ prayerIndex = this.nextIndex, startedAt = Date.now(), nowMs = Date.now(), playAudio = true } = {}) {
+            const event = this.prayers[prayerIndex];
+            if (!event) return this.reset();
+
+            const duration = this.getDuration(this.durasiAdzan, event.key, 120);
+            this.enterPhase('ADZAN', event, prayerIndex, startedAt, duration, nowMs);
+
+            if (playAudio) this.playBeep1(1);
+        },
+
+        startIqomah({ startedAt = Date.now(), nowMs = Date.now(), prayerIndex = null } = {}) {
+            const index = prayerIndex ?? this.getActivePrayerIndex();
+            const event = this.prayers[index];
+            if (!event) return this.reset();
+
+            const duration = this.getDuration(this.durasiIqomah, event.key, 300);
+            this.enterPhase('IQOMAH', event, index, startedAt, duration, nowMs);
+        },
+
+        startSholat({ startedAt = Date.now(), nowMs = Date.now(), prayerIndex = null } = {}) {
+            const index = prayerIndex ?? this.getActivePrayerIndex();
+            const event = this.prayers[index];
+            if (!event) return this.reset();
+
+            const key = this.isFriday(new Date(startedAt)) && event.key === 'dzuhur' ? 'jumat' : event.key;
+            const duration = this.getDuration(this.durasiSholat, key, key === 'jumat' ? 2400 : 600);
+
+            this.enterPhase('SHOLAT', event, index, startedAt, duration, nowMs);
+            this.totalSholatDuration = duration;
+            this.currentPrayerName = this.displayLabel(event, new Date(startedAt)).toUpperCase();
+        },
+
+        enterPhase(mode, event, prayerIndex, startedAt, durationSeconds, nowMs = Date.now()) {
+            this.transitionLock = true;
+
+            this.mode = mode;
+            this.activePrayerKey = event.key;
+            this.activePrayerDate = this.localDateKey(new Date(startedAt));
+            this.nextIndex = prayerIndex;
+            this.phaseStartedAt = startedAt;
+            this.phaseDurationSeconds = durationSeconds;
+            this.phaseEndsAt = startedAt + (durationSeconds * 1000);
+            this.countdownTargetAt = null;
+            this.countdownTargetIndex = null;
+
+            const remaining = Math.max(0, Math.ceil((this.phaseEndsAt - nowMs) / 1000));
+            this.setPhaseRemaining(remaining);
+            this.saveState();
+
+            this.transitionLock = false;
+
+            // Jika browser baru bangun dan deadline fase ini ternyata juga sudah lewat,
+            // lanjutkan segera tanpa menunggu heartbeat berikutnya.
+            if (nowMs >= this.phaseEndsAt) this.advancePhase(nowMs);
+        },
+
+        advancePhase(nowMs = Date.now()) {
+            if (this.transitionLock) return;
+            this.transitionLock = true;
+
+            const event = this.getActivePrayer();
+            const index = this.getActivePrayerIndex();
+            const endedAt = this.phaseEndsAt ?? nowMs;
+            const previousMode = this.mode;
+
+            if (!event || index < 0) {
+                this.transitionLock = false;
+                this.reset(nowMs);
+                return;
+            }
+
+            this.transitionLock = false;
+
+            if (previousMode === 'ADZAN') {
+                if (this.isFriday(new Date(endedAt)) && event.key === 'dzuhur') {
+                    this.startSholat({ startedAt: endedAt, nowMs, prayerIndex: index });
+                } else {
+                    this.startIqomah({ startedAt: endedAt, nowMs, prayerIndex: index });
+                }
+                return;
+            }
+
+            if (previousMode === 'IQOMAH') {
+                this.playBeep2(1);
+                this.startSholat({ startedAt: endedAt, nowMs, prayerIndex: index });
+                return;
+            }
+
+            if (previousMode === 'SHOLAT') {
+                this.reset(nowMs);
+            }
+        },
+
+        getDuration(map, key, fallback) {
+            const value = Number(map?.[key]);
+            return Number.isFinite(value) && value >= 0 ? value : fallback;
+        },
+
+        getActivePrayerIndex() {
+            if (!this.activePrayerKey) return this.nextIndex ?? -1;
+            return this.prayers.findIndex(p => p.key === this.activePrayerKey);
+        },
+
+        getActivePrayer() {
+            const index = this.getActivePrayerIndex();
+            return index >= 0 ? this.prayers[index] : null;
+        },
+
+        reset(nowMs = Date.now()) {
+            this.clearState();
+            this.mode = 'COUNTDOWN';
+            this.activePrayerKey = null;
+            this.activePrayerDate = null;
+            this.phaseStartedAt = null;
+            this.phaseEndsAt = null;
+            this.phaseDurationSeconds = 0;
+            this.adzanRemaining = 0;
+            this.iqomahRemaining = 0;
+            this.sholatRemaining = 0;
+            this.phaseCountdown = '00:00';
+            this.countdownTargetAt = null;
+            this.countdownTargetIndex = null;
+
+            this.selectNextCountdownTarget(nowMs + 1);
+            this.tickCountdown(nowMs);
+        },
+
+        // =============================================================
+        // RECONCILIATION
+        // Merekonstruksi state dari jadwal absolut. Penting ketika browser
+        // direload/dibuka setelah sleep dan localStorage tidak lagi valid.
+        // =============================================================
+        reconcileFromSchedule(nowMs = Date.now()) {
+            if (!Array.isArray(this.prayers) || !this.prayers.length) {
+                this.reset(nowMs);
+                return;
+            }
+
+            const now = new Date(nowMs);
+            const candidates = [];
+
+            // Cek hari ini dan kemarin (untuk sholat yang mungkin melewati tengah malam).
+            for (const dayOffset of [-1, 0]) {
+                const day = new Date(now);
+                day.setDate(day.getDate() + dayOffset);
+                day.setHours(0, 0, 0, 0);
+
+                this.prayers.forEach((event, index) => {
+                    if (!event.hasAdzan) return;
+
+                    const adzanStart = this.prayerTimestamp(event, day);
+                    const adzanDuration = this.getDuration(this.durasiAdzan, event.key, 120);
+                    const adzanEnd = adzanStart + adzanDuration * 1000;
+
+                    const fridayDzuhur = this.isFriday(new Date(adzanStart)) && event.key === 'dzuhur';
+                    const iqomahDuration = fridayDzuhur ? 0 : this.getDuration(this.durasiIqomah, event.key, 300);
+                    const iqomahEnd = adzanEnd + iqomahDuration * 1000;
+
+                    const sholatKey = fridayDzuhur ? 'jumat' : event.key;
+                    const sholatDuration = this.getDuration(this.durasiSholat, sholatKey, fridayDzuhur ? 2400 : 600);
+                    const sholatStart = fridayDzuhur ? adzanEnd : iqomahEnd;
+                    const sholatEnd = sholatStart + sholatDuration * 1000;
+
+                    if (nowMs >= adzanStart && nowMs < adzanEnd) {
+                        candidates.push({ mode: 'ADZAN', event, index, startedAt: adzanStart, duration: adzanDuration });
+                    } else if (!fridayDzuhur && nowMs >= adzanEnd && nowMs < iqomahEnd) {
+                        candidates.push({ mode: 'IQOMAH', event, index, startedAt: adzanEnd, duration: iqomahDuration });
+                    } else if (nowMs >= sholatStart && nowMs < sholatEnd) {
+                        candidates.push({ mode: 'SHOLAT', event, index, startedAt: sholatStart, duration: sholatDuration });
+                    }
+                });
+            }
+
+            if (candidates.length) {
+                // Ambil fase yang paling baru mulai.
+                candidates.sort((a, b) => b.startedAt - a.startedAt);
+                const c = candidates[0];
+                this.enterPhase(c.mode, c.event, c.index, c.startedAt, c.duration, nowMs);
+                if (c.mode === 'SHOLAT') {
+                    this.totalSholatDuration = c.duration;
+                    this.currentPrayerName = this.displayLabel(c.event, new Date(c.startedAt)).toUpperCase();
+                }
+                return;
+            }
+
+            this.mode = 'COUNTDOWN';
+            this.activePrayerKey = null;
+            this.activePrayerDate = null;
+            this.phaseStartedAt = null;
+            this.phaseEndsAt = null;
+            this.selectNextCountdownTarget(nowMs);
+            this.tickCountdown(nowMs);
+        },
+
+        // =============================================================
+        // PERSISTENCE
+        // Simpan deadline, bukan remaining counter.
+        // =============================================================
+        saveState() {
+            if (this.mode === 'COUNTDOWN' || !this.activePrayerKey || !this.phaseEndsAt) {
+                this.clearState();
+                return;
+            }
+
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify({
+                version: this.STORAGE_VERSION,
+                mode: this.mode,
+                prayerKey: this.activePrayerKey,
+                prayerDate: this.activePrayerDate,
+                phaseStartedAt: this.phaseStartedAt,
+                phaseEndsAt: this.phaseEndsAt,
+                phaseDurationSeconds: this.phaseDurationSeconds,
+            }));
+        },
+
+        restoreState() {
+            const raw = localStorage.getItem(this.STORAGE_KEY);
+            if (!raw) return false;
+
+            try {
+                const data = JSON.parse(raw);
+                if (data.version !== this.STORAGE_VERSION) {
+                    this.clearState();
+                    return false;
+                }
+
+                const index = this.prayers.findIndex(p => p.key === data.prayerKey);
+                if (index < 0 || !['ADZAN', 'IQOMAH', 'SHOLAT'].includes(data.mode)) {
+                    this.clearState();
+                    return false;
+                }
+
+                const nowMs = Date.now();
+                if (!Number.isFinite(Number(data.phaseEndsAt)) || nowMs >= Number(data.phaseEndsAt)) {
+                    this.clearState();
+                    return false;
+                }
+
+                const event = this.prayers[index];
+                const startedAt = Number(data.phaseStartedAt);
+                const duration = Number(data.phaseDurationSeconds) || Math.ceil((Number(data.phaseEndsAt) - startedAt) / 1000);
+
+                this.enterPhase(data.mode, event, index, startedAt, duration, nowMs);
+                this.phaseEndsAt = Number(data.phaseEndsAt); // pertahankan deadline persis yang disimpan
+                this.activePrayerDate = data.prayerDate ?? this.localDateKey(new Date(startedAt));
+                this.setPhaseRemaining(Math.max(0, Math.ceil((this.phaseEndsAt - nowMs) / 1000)));
+
+                if (data.mode === 'SHOLAT') {
+                    this.totalSholatDuration = duration;
+                    this.currentPrayerName = this.displayLabel(event, new Date(startedAt)).toUpperCase();
+                }
+
+                return true;
+            } catch (e) {
+                console.warn('State masjid tidak valid, melakukan rekonstruksi ulang.', e);
+                this.clearState();
+                return false;
+            }
+        },
+
+        clearState() {
+            localStorage.removeItem(this.STORAGE_KEY);
+            // Hapus state versi lama agar tidak lagi ikut campur.
+            localStorage.removeItem('masjid_state');
+        },
+
+        getRemaining() {
+            if (!this.phaseEndsAt) return 0;
+            return Math.max(0, Math.ceil((this.phaseEndsAt - Date.now()) / 1000));
+        },
+
+        // =============================================================
+        // LIVE UPDATES
+        // =============================================================
+        applyPrayerUpdate(detail) {
+            if (!detail) return;
+
+            if (Array.isArray(detail.prayers)) this.prayers = detail.prayers;
+
+            const settings = detail.settings ?? {};
+            if (settings.durasiAdzan) this.durasiAdzan = settings.durasiAdzan;
+            if (settings.durasiIqomah) this.durasiIqomah = settings.durasiIqomah;
+            if (settings.durasiSholat) this.durasiSholat = settings.durasiSholat;
+
+            if (Object.prototype.hasOwnProperty.call(settings, 'hijriOffset')) {
+                this.hijriOffset = Number(settings.hijriOffset);
+                this.applyHijriOffset();
+            }
+
+            // Satu reconciliation setelah seluruh payload diterapkan, sehingga
+            // prayers baru tidak pernah diproses dengan setting durasi lama.
+            this.reconcileAfterConfigUpdate();
+        },
+
+        updatePrayers(newData) {
+            if (!Array.isArray(newData)) return;
+            this.prayers = newData;
+            this.reconcileAfterConfigUpdate();
+        },
+
+        updateSettings(settings) {
+            if (!settings) return;
+            if (settings.durasiAdzan) this.durasiAdzan = settings.durasiAdzan;
+            if (settings.durasiIqomah) this.durasiIqomah = settings.durasiIqomah;
+            if (settings.durasiSholat) this.durasiSholat = settings.durasiSholat;
+
+            if (Object.prototype.hasOwnProperty.call(settings, 'hijriOffset')) {
+                this.hijriOffset = Number(settings.hijriOffset);
+                this.applyHijriOffset();
+            }
+
+            this.reconcileAfterConfigUpdate();
+        },
+
+        reconcileAfterConfigUpdate() {
+            // Saat fase aktif, jangan mengubah deadline yang sudah berjalan karena
+            // setting baru seharusnya berlaku pada fase berikutnya.
+            if (this.mode === 'COUNTDOWN') {
+                this.countdownTargetAt = null;
+                this.countdownTargetIndex = null;
+                this.selectNextCountdownTarget(Date.now());
+                this.tickCountdown(Date.now());
+            }
+        },
+
+        // =============================================================
+        // DATE / HIJRI / LABEL
+        // =============================================================
+        updateClock() {
+            this.time = new Date().toLocaleTimeString('en-GB', {
+                hour: '2-digit', minute: '2-digit', hour12: false
+            });
+        },
+
+        updateDate() {
+            const now = new Date();
+            const namaHari = ['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            this.hari = namaHari[now.getDay()] + ',';
+            this.tanggalMasehi = now.toLocaleDateString('id-ID', {
+                day: '2-digit', month: 'long', year: 'numeric'
+            });
+            this.updateHijriDate(now);
+        },
+
+        updateHijriDate(now = new Date()) {
+            const baseDate = new Date(now);
+            const isAfterMaghrib = localStorage.getItem('hijri_is_after_maghrib') === '1';
+            if (isAfterMaghrib) baseDate.setDate(baseDate.getDate() + 1);
+
+            this.baseHijriDate = new Date(baseDate);
+            this.applyHijriOffset();
+        },
+
+        applyHijriOffset() {
+            if (!this.baseHijriDate) return;
+            const hijriDate = new Date(this.baseHijriDate);
+            hijriDate.setDate(hijriDate.getDate() + this.hijriOffset);
+            this.hijri = new Intl.DateTimeFormat('id-ID-u-ca-islamic-umalqura', {
+                day: 'numeric', month: 'long', year: 'numeric'
+            }).format(hijriDate);
+        },
+
+        syncHijriMaghribFlag(nowMs = Date.now()) {
+            const maghrib = this.prayers.find(p => p.key === 'maghrib');
+            if (!maghrib) return;
+
+            const maghribAt = this.prayerTimestamp(maghrib, new Date(nowMs));
+            const isPastMaghrib = nowMs >= maghribAt;
+            const currentFlag = localStorage.getItem('hijri_is_after_maghrib');
+
+            if (isPastMaghrib && currentFlag !== '1') {
+                localStorage.setItem('hijri_is_after_maghrib', '1');
+                this.updateDate();
+            } else if (!isPastMaghrib && currentFlag === '1') {
+                localStorage.removeItem('hijri_is_after_maghrib');
+                this.updateDate();
+            }
+        },
+
+        displayLabel(prayer, date = new Date()) {
+            if (!prayer) return '';
+            if (prayer.key === 'dzuhur' && date.getDay() === 5) return "Jum'ah";
             return prayer.label;
         },
 
-        /* ================= MODE ADZAN ================= */
-        startAdzan(remaining = null, isRestored = false) {
-            this.clearTimer();
-            this.mode = 'ADZAN';
-            const currentEvent = this.prayers[this.nextIndex];
-            if(!currentEvent) return this.reset();
-            
-            this.adzanRemaining = remaining ?? (this.durasiAdzan[currentEvent.key] || 120);
+        isFriday(date = new Date()) {
+            return date.getDay() === 5;
+        },
 
-            this.initFlip(this.adzanRemaining);
-            
-            // Jangan bunyikan beep jika ini hasil dari refresh browser (isRestored)
-            if (!isRestored) {
-                this.playBeep1(1); 
+        localDateKey(date = new Date()) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        },
+
+        // =============================================================
+        // NEW DAY
+        // =============================================================
+        checkNewDay() {
+            const today = new Date().toDateString();
+            if (today === this.todayKey) {
+                this.syncHijriMaghribFlag();
+                return;
             }
 
-            this.timer = setInterval(() => {
-                if (this.adzanRemaining > 0) {
-                    this.adzanRemaining--;
-                    this.saveState();
-                } else {
-                    clearInterval(this.timer);
-                    setTimeout(() => this.finishAdzan(), 1000);
-                }
-            }, 1000);
+            this.todayKey = today;
+            this.onNewDay();
         },
 
-        finishAdzan() {
-            this.clearTimer();
-            const currentPrayer = this.prayers[this.nextIndex];
-            
-            // Cek apakah hari ini Jumat dan shalatnya adalah Dzuhur
-            if (currentPrayer && this.isFriday() && currentPrayer.key === 'dzuhur') {
-                this.startSholat(); 
-            } else {
-                this.startIqomah();
-            }
-        },
-
-        // ... startIqomah dan startSholat tetap mirip, pastikan memanggil saveState()
-        startIqomah(remaining = null) {
-            this.clearTimer();
-            this.mode = 'IQOMAH';
-            const currentEvent = this.prayers[this.nextIndex];
-            this.iqomahRemaining = remaining ?? (this.durasiIqomah[currentEvent.key] || 300);
-            
-            this.initFlip(this.iqomahRemaining);
-            this.timer = setInterval(() => {
-                if (this.iqomahRemaining > 0) {
-                    this.iqomahRemaining--;
-                    this.saveState();
-                } else {
-                    clearInterval(this.timer);
-                    this.playBeep2(1);
-                    setTimeout(() => this.startSholat(), 4000);
-                }
-            }, 1000);
-        },
-
-        startSholat(remaining = null) {
-            const currentEvent = this.prayers[this.nextIndex];
-            if (!currentEvent) return this.reset();
-
-            this.clearTimer();
-            this.mode = 'SHOLAT';
-            this.currentPrayerName = this.displayLabel(currentEvent).toUpperCase();
-            
-            const key = currentEvent.key;
-            if (this.isFriday() && key === 'dzuhur') {
-                this.totalSholatDuration = this.durasiSholat['jumat'] || 2400;
-            } else {
-                this.totalSholatDuration = this.durasiSholat[key] || 600;
+        onNewDay() {
+            // Jangan memotong SHOLAT yang sah melewati tengah malam.
+            if (this.mode === 'COUNTDOWN') {
+                this.clearState();
+                this.countdownTargetAt = null;
+                this.countdownTargetIndex = null;
             }
 
-            this.sholatRemaining = remaining ?? this.totalSholatDuration;
-            this.saveState();
+            localStorage.removeItem('hijri_is_after_maghrib');
+            this.updateDate();
 
-            this.timer = setInterval(() => {
-                if (this.sholatRemaining > 0) {
-                    this.sholatRemaining--;
-                    this.saveState();
-                } else {
-                    this.reset();
-                }
-            }, 1000);
+            // Livewire akan mengganti prayerTimes dengan jadwal tanggal baru.
+            this.$dispatch('refresh-schedule');
         },
 
-        reset() {
-            this.clearTimer();
-            this.clearState();
-            this.mode = 'COUNTDOWN';
-            this.updateNextIndex();
-            this.tickCountdown();
+        // =============================================================
+        // UI TIMERS (tidak menentukan state ibadah)
+        // =============================================================
+        loopClockSwitch() {
+            if (this.clockSwitchTimer) clearInterval(this.clockSwitchTimer);
+            this.clockSwitchTimer = setInterval(() => {
+                if (this.isClockTransitioning) return;
+                this.isClockTransitioning = true;
+                this.showAnalog = !this.showAnalog;
+                setTimeout(() => { this.isClockTransitioning = false; }, 1200);
+            }, 20000);
         },
 
-        /* ================= UTIL ================= */
-        clearTimer() {
-            if (this.timer) {
-                clearInterval(this.timer);
-                this.timer = null;
-            }
-
-            // Bersihkan instance FlipClock jika mode berpindah
-            if (this.flipClockInstance) {
-                this.flipClockInstance = null;
-            }
+        initTextSlider() {
+            if (!this.textSlider || this.textSlider.length === 0) return;
+            this.stopTextSlider();
+            this.sliderTimer = setInterval(() => {
+                if (this.mode !== 'COUNTDOWN') return;
+                this.nextSlide();
+            }, this.sliderInterval);
         },
 
-        isFriday() {
-            return new Date().getDay() === 5;
+        nextSlide() {
+            this.activeSlide = (this.activeSlide + 1) % this.textSlider.length;
         },
 
-        // --- FUNGSI AUDIO YANG AMAN ---
+        stopTextSlider() {
+            if (this.sliderTimer) clearInterval(this.sliderTimer);
+            this.sliderTimer = null;
+        },
+
+        // =============================================================
+        // AUDIO
+        // =============================================================
         playBeep1(times = 1) {
             if (this.isMuted || !this.beepAudio1) return;
             let count = 0;
             const playOnce = () => {
                 if (count >= times) return;
                 this.beepAudio1.currentTime = 0;
-                this.beepAudio1.play().catch(e => console.warn("Audio play blocked"));
+                this.beepAudio1.play().catch(() => console.warn('Audio play blocked'));
                 count++;
                 if (count < times) setTimeout(playOnce, 500);
             };
@@ -1048,7 +1335,7 @@ class extends Component
             const playOnce = () => {
                 if (count >= times) return;
                 this.beepAudio2.currentTime = 0;
-                this.beepAudio2.play().catch(e => console.warn("Audio play blocked"));
+                this.beepAudio2.play().catch(() => console.warn('Audio play blocked'));
                 count++;
                 if (count < times) setTimeout(playOnce, 500);
             };
@@ -1061,113 +1348,47 @@ class extends Component
                 .forEach(k => localStorage.removeItem(k));
         },
 
-        // Mute audio
         toggleMute() {
             this.isMuted = !this.isMuted;
             localStorage.setItem('audio_muted', this.isMuted);
-            
-            // Trik: Mainkan suara kosong (silent) untuk "memancing" izin browser
+
             if (!this.isMuted) {
-                const audio = new Audio('assets/audio/beep-01.mp3');
-                audio.volume = 1; // Tidak terdengar
-                audio.play().catch(e => console.log("Izin audio didapat"));
+                const audio = new Audio("{{ asset('assets/audio/beep-01.mp3') }}");
+                audio.volume = 0.01;
+                audio.play().catch(() => console.log('Izin audio belum diberikan browser'));
             }
         },
 
-        initFlip(detik) {
-            // 1. Jika sudah ada instance, kita coba hentikan dulu (tergantung library yang dipakai)
-            if (this.flipClockInstance) {
-                this.flipClockInstance = null;
-            }
-
-            this.$nextTick(() => {
-                const container = this.$refs.flipTunggal;
-                if (!container) return;
-
-                // 2. Paksa kosongkan container
-                container.innerHTML = '';
-                
-                const targetTime = new Date(Date.now() + (detik * 1000) + 500);
-                
-                // 3. Gunakan pengecekan sederhana untuk mencegah eksekusi ganda dalam waktu yang sangat berdekatan
-                if (container.children.length > 0) return;
-
-                this.flipClockInstance = FlipClock.flipClock({
-                    parent: container,
-                    face: FlipClock.elapsedTime({
-                        to: targetTime,
-                        format: '[mm]:[ss]'
-                    }),
-                    theme: FlipClock.theme({
-                        dividers: ':',
-                        css: FlipClock.css({ 
-                            fontSize: '10rem', 
-                            color: '#927a38',
-                            backgroundColor: 'transparent' 
-                        })
-                    })
-                });
-            });
-        },
-
+        // =============================================================
+        // SAFE RELOAD
+        // Reload hanya ketika COUNTDOWN sehingga tidak memotong adzan/iqomah/sholat.
+        // =============================================================
         setupDailyReload() {
-            const scheduleReload = () => {
-                const delay = 3 * 60 * 60 * 1000; // reload tiap 3 jam
-                setTimeout(() => this.tryReload(), delay);
-            };
-
-            scheduleReload();
+            const delay = 3 * 60 * 60 * 1000;
+            if (this.reloadTimer) clearTimeout(this.reloadTimer);
+            this.reloadTimer = setTimeout(() => this.tryReload(), delay);
         },
 
         tryReload() {
-            if(this.mode !== 'countdown'){
-                setTimeout(() => this.tryReload(), 60 * 1000);
+            if (this.mode !== 'COUNTDOWN') {
+                this.reloadTimer = setTimeout(() => this.tryReload(), 60 * 1000);
                 return;
             }
-            
+
             if (!navigator.onLine) {
-                console.log('Offline, reload ditunda');
-                setTimeout(() => this.tryReload(), 5 * 60 * 1000);
+                this.reloadTimer = setTimeout(() => this.tryReload(), 5 * 60 * 1000);
                 return;
             }
 
             fetch('/ping', { cache: 'no-store' })
-                .then(() => {
-                    // localStorage.setItem('last_reload', today);
+                .then(response => {
+                    if (!response.ok) throw new Error('Ping gagal');
                     location.reload();
                 })
                 .catch(() => {
-                    setTimeout(() => this.tryReload(), 5 * 60 * 1000);
+                    this.reloadTimer = setTimeout(() => this.tryReload(), 5 * 60 * 1000);
                 });
         },
-
-        initTextSlider() {
-            if (!this.textSlider || this.textSlider.length === 0) return;
-
-            // jangan double interval
-            this.stopTextSlider();
-
-            this.sliderTimer = setInterval(() => {
-                // 🔒 guard ekstra
-                if (this.mode !== 'COUNTDOWN') return;
-
-                this.nextSlide();
-            }, this.sliderInterval);
-        },
-
-        nextSlide() {
-            this.activeSlide =
-                (this.activeSlide + 1) % this.textSlider.length;
-        },
-
-        stopTextSlider() {
-            if (this.sliderTimer) {
-                clearInterval(this.sliderTimer);
-                this.sliderTimer = null;
-            }
-        },
-
-
     }));
 
     window.Echo.channel('display-updated')
